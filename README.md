@@ -17,16 +17,17 @@
 This is a universal kernel engineered for **ARM, RISC-V, x86, SGX, TrustZone**, and automotive-grade SoCs.
 
 ### ✨ Core Highlights
-* **Dual-Domain Security:** A unified algorithm supporting both cloud-side Intel SGX TEE verification and edge-side ARM Cortex-M real-time generation.
-* **Ultra-Lightweight:** Core binary footprint is approximately **7.5 KB**, ensuring minimal Flash consumption.
-* **Heap-Less Design:** Full-stack computation without dynamic memory allocation (`malloc`/`free`), completely eliminating memory fragmentation and OOM risks.
-* **Industrial Stability:** Verified through Rust strong-typing safety and Hard-float ABI physical alignment, eliminating "Exit Code 101" linking errors.
+* **Dual-Domain Security:** Unified algorithm for cloud-side Intel SGX and edge-side ARM Cortex-M.
+* **Ultra-Lightweight:** ~7.5 KB binary footprint.
+* **Heap-Less Design:** Zero dynamic memory allocation, eliminating fragmentation and OOM risks.
+* **Industrial Stability:** Hard-float ABI aligned and Rust-safe.
 
 ---
 
 ## 🏗️ The Master Tree: Architectural Overview
 
-A standard, auditable Rust Workspace featuring built-in C-ABI auto-generation and cross-platform build matrices.
+<details>
+<summary>▶ Click to expand project structure</summary>
 
 ```text
 sonolock-core/
@@ -46,13 +47,13 @@ sonolock-core/
 │   └── sonolock-verifier-api/  # Cross-language FFI Bridge (Security Boundary)
 ├── Cargo.toml                  # Workspace Configuration
 └── LICENSE                     # Apache 2.0
-⚖️ The Three Laws: Core Design PrinciplesV5.2 establishes three non-negotiable constraints at the engineering level:1. Protocol as Physical Layout (The Law)sonolock-protocol defines immutable, cross-language consistent byte structures.Packed Strategy: Deliberately uses packed structures to trade space efficiency for transmission determinism.Binary Consistency: Ensures identical byte sequences across any platform (ARM/x86).Constraint: Strictly 73 Bytes. Direct field access on unaligned memory is prohibited.2. FFI Boundary as Security Boundary (The Bridge)sonolock-verifier-api provides the sole legal C-ABI entry point.Engineering Iron Rule: Passing structure pointers is prohibited; only byte buffers are allowed.Byte Mover Pattern: Core export functions use memcpy semantics for cross-boundary transfers, fundamentally preventing Hard Faults on ARM Cortex-M and RISC-V due to unaligned access.3. Code as Header (No Drift)Every cargo build automatically triggers cbindgen to generate include/sonolock_core.h. This ensures the Rust implementation and C API remain perfectly synchronized.🛠️ Implementation Detail: Engineering Specifications1. Industrial Build ConfigurationEnforces "Panic Abort" and "Fat LTO" to ensure minimal artifacts without Unwind risks.Ini, TOML[profile.release]
-panic = "abort"        # Prevents Unwind across FFI boundaries to avoid UB
-lto = "fat"            # Enables maximum Link-Time Optimization
-codegen-units = 1      # Sacrifice compile time for extreme runtime performance
-strip = true           # Removes symbol tables to prevent reverse engineering
-overflow-checks = true # Safety first: checks for overflows even in Release mode
-2. Core Protocol DefinitionImmutable data contract, strictly locked at 73 bytes.Rust#[repr(C, packed)]
+</details>⚖️ The Three Laws: Core Design Principles<details><summary>▶ Click to view the Engineering Laws</summary>1. Protocol as Physical Layout (The Law)sonolock-protocol defines immutable, cross-language consistent byte structures.Packed Strategy: Trading space efficiency for transmission determinism.Binary Consistency: Identical byte sequences across ARM/x86.Constraint: Strictly 73 Bytes.2. FFI Boundary as Security Boundary (The Bridge)Engineering Iron Rule: No structure pointers; byte buffers only.Byte Mover Pattern: Using memcpy semantics to prevent Hard Faults on unaligned ARM/RISC-V access.3. Code as Header (No Drift)Automatic cbindgen integration ensures Rust implementation and C API are always synchronized.</details>🛠️ Implementation Detail: Engineering Specifications<details><summary>▶ Click to view Rust & FFI specifications</summary>1. Industrial Build ConfigurationIni, TOML[profile.release]
+panic = "abort"        # Prevents Unwind across FFI boundaries
+lto = "fat"            # Maximum Link-Time Optimization
+codegen-units = 1      # Extreme runtime performance
+strip = true           # Removes symbol tables
+overflow-checks = true # Safety first
+2. Core Protocol DefinitionRust#[repr(C, packed)]
 pub struct SoundCommitment {
     pub version: u8,             // Protocol Version (0x52)
     pub timestamp: u64,          // Unix Timestamp
@@ -61,23 +62,22 @@ pub struct SoundCommitment {
     pub context_extension: [u8; 16], // Extension Fields
 }
 
-// Compile-time assertion: ensure size is strictly 73 bytes
+// Compile-time assertion
 const _: () = assert!(core::mem::size_of::<SoundCommitment>() == 73);
-📦 The Artifacts: Delivery & Integration Specs1. Physical Componentslibsonolock_verifier_api.a: Static library optimized for ARM Cortex-M4F.sonolock_core.h: Standard C interface definition, compatible with C99/C++.2. Integration SpecsParameterSpecificationTarget DeviceARM Cortex-M4FArchitecturethumbv7em-none-eabihfFloat ABIHard-float (-mfloat-abi=hard)FPU TypeFPv4-SP-D16Panic StrategyAbort (Silent in-place)🚀 The Code: Quick Start & ABI ContractC Integration ExampleC#include "include/sonolock_core.h"
+</details>📦 The Artifacts: Delivery & Integration Specs<details><summary>▶ Click to view Binary & Hardware Specs</summary>1. Physical Componentslibsonolock_verifier_api.a: Static library for ARM Cortex-M4F.sonolock_core.h: Standard C99/C++ header.2. Integration SpecsParameterSpecificationTarget DeviceARM Cortex-M4FArchitecturethumbv7em-none-eabihfFloat ABIHard-float (-mfloat-abi=hard)FPU TypeFPv4-SP-D16Panic StrategyAbort (Silent in-place)</details>🚀 The Code: Quick Start & ABI Contract<details><summary>▶ Click to view C Integration Example</summary>C#include "include/sonolock_core.h"
 
 int main() {
-    float pcm_buffer[100]; // Fill with your audio samples
+    float pcm_buffer[100]; 
     uint8_t commitment[73];
     
-    // Invoke the Rust Core Algorithm
+    // Invoke Rust Core
     int8_t status = snlk_generate_commitment(pcm_buffer, 100, commitment);
     
     if (status == 0) {
-        // [SECURITY SAFE] Must move to aligned struct via memcpy before access
+        // [SECURITY SAFE] Move to aligned struct via memcpy
         snlk_SoundCommitment c;
         memcpy(&c, commitment, sizeof(c));
-        // printf("Timestamp: %llu\n", c.timestamp);
     }
     return 0;
 }
-⚠️ The Iron Standard: Embedded Integration Rules[!IMPORTANT]DSP & Embedded Format CompatibilityIn automotive SoCs, source audio is often int16_t. The kernel exclusively uses Float32. The caller is responsible for normalizing int16 data to float (range -1.0 to 1.0) before invocation.✅ Correct Flow: Allocate uint8_t buffer[73] -> Call Interface -> memcpy to local aligned struct.❌ Forbidden Action: Directly casting pointers ((snlk_SoundCommitment*)raw) will cause Hard Faults on ARM.🛡️ Toxic Data Audit: Principles of DestructionSonolock treats user audio as High-Risk Transient Data (Toxic Data).Lifecycle: Strictly < 20ms.Mechanism: Immediate Zeroization following hash computation.Storage Strategy: No disk persistence, no caching, zero recovery potential.MetricResultConstraintStatusP50 Latency4.12 ms< 10 msPASSEDP99 Latency7.42 ms< 20 msPASSEDMemory Scrub100% Cleared0% ResiduePASSED🏁 The Manifesto: Final PositioningSonolock V5.2 “Iron Genesis” is not an SDK, nor a demo, nor research code.It is the blast furnace for digital sound assets.
+</details>🛡️ Toxic Data Audit: Principles of Destruction<details><summary>▶ Click to view Security Audit Data</summary>Sonolock treats user audio as High-Risk Transient Data (Toxic Data).Lifecycle: Strictly < 20ms.Mechanism: Immediate Zeroization following hash computation.Storage Strategy: No disk persistence, zero recovery potential.MetricResultConstraintStatusP50 Latency4.12 ms< 10 msPASSEDP99 Latency7.42 ms< 20 msPASSEDMemory Scrub100% Cleared0% ResiduePASSED</details>🏁 The Manifesto: Final PositioningSonolock V5.2 “Iron Genesis” is not an SDK, nor a demo, nor research code.It is the blast furnace for digital sound assets. digital sound assets.
