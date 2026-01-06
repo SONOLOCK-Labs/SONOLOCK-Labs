@@ -73,11 +73,11 @@ int main() {
 
 ---
 
-##  Licensing
+## Licensing
 
-* **License:** Apache 2.0 (Public)
-* **Proprietary Note:** Redistribution, reverse engineering, or modification of binaries is prohibited without explicit permission.
-* **Source Access:** Available only to audited enterprise partners under NDA.
+* **License:** Proprietary / Commercial (Binary Distribution)
+* **Usage:** Free for non-commercial integration testing. Commercial deployment requires an active SLA.
+* **Source Access:** Available only to audited Enterprise Partners under NDA.
 
 For licensing inquiries or enterprise support, contact: `licensing@sonolock.com` (replace with your actual contact).
 
