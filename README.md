@@ -3,18 +3,17 @@
 > **Proving sound integrity without retaining sound data.**
 
 **Universal Edition (Refactored)**
-
-**Access Level:** PUBLIC
+**Access Level:** PUBLIC (Binary Distribution)
 
 ---
 
-##  Overview
+## 🌟 Overview
 
 Sonolock V5.2.1 "Iron Genesis" is a high-assurance audio integrity commitment kernel designed for industrial, embedded, and Trusted Execution Environments (TEE). It generates verifiable cryptographic commitments within a secure execution environment without retaining raw audio data.
 
 **Platform Compatibility:** ARM Cortex-M, RISC-V, x86, SGX, TrustZone, automotive-grade SoCs.
 
-###  Core Highlights (Abstracted)
+### ✨ Core Highlights (Abstracted)
 
 * **Dual-Domain Security:** Supports both edge and cloud verification.
 * **Ultra-Lightweight:** Small binary footprint.
@@ -25,7 +24,7 @@ Sonolock V5.2.1 "Iron Genesis" is a high-assurance audio integrity commitment ke
 
 ---
 
-##  Project Structure (Public View)
+## 🏗️ Project Structure (Public View)
 
 <details>
 <summary>▶ Click to expand</summary>
@@ -33,56 +32,50 @@ Sonolock V5.2.1 "Iron Genesis" is a high-assurance audio integrity commitment ke
 ```text
 sonolock-core/
 ├── docs/                 # Documentation & integration guides
-├── include/              # Public headers (C API)
-│   └── sonolock_core_public.h
+├── include/              # Public headers (C Standard API)
+│   └── sonolock_core.h
 ├── lib/                  # Pre-compiled static libraries for supported platforms
-├── examples/             # Integration example code (abstracted)
-├── crates/               # Rust workspace with protocol definitions and FFI bridges (implementation confidential)
+├── examples/             # Integration example code
 └── README.md             # Public overview and quick start
-```
 
-</details>
-
----
-
-##  Public Integration Example
-
-<details>
-<summary>▶ Click to view</summary>
-
-```c
-#include "include/sonolock_core_public.h"
+Public Integration Example
+<details> <summary>▶ Click to view</summary>
+#include "include/sonolock_core.h"
 
 int main() {
-    void* audio_input = /* your audio buffer */;
-    size_t input_length = /* length of audio buffer */;
-    void* commitment_output = /* opaque buffer */;
+    // 1. Initialize Context (Opaque Handle)
+    const char* config = "init_params";
+    SonolockCtx* ctx = sonolock_init((const uint8_t*)config, 11);
 
-    int32_t status = Snlk_Forge(audio_input, input_length, commitment_output);
+    if (!ctx) return -1; // Initialization failed
 
-    if (status == 0) {
-        // commitment_output now holds the opaque proof artifact
+    // 2. Prepare Data
+    uint8_t audio_input[1024]; // Your audio buffer
+    uint8_t proof_output[256]; // Opaque proof artifact
+
+    // 3. Generate Commitment (Zero-Knowledge)
+    sonolock_status_t status = sonolock_verify_signal(
+        ctx, 
+        audio_input, 
+        sizeof(audio_input), 
+        proof_output, 
+        sizeof(proof_output)
+    );
+
+    if (status == SONOLOCK_SUCCESS) {
+        // proof_output now holds the verifiable artifact
     }
+
+    // 4. Cleanup
+    sonolock_teardown(ctx);
     return 0;
 }
-```
-
-> **Note:** Buffer sizes, alignments, and internal structure layouts are implementation details and are intentionally abstracted.
+Note: Buffer sizes, alignments, and internal structure layouts are implementation details and are intentionally abstracted via opaque pointers.
 
 </details>
+Licensing
+License: Proprietary / Commercial (Binary Distribution)
 
----
+Usage: Free for non-commercial integration testing. Commercial deployment requires an active SLA.
 
-## Licensing
-
-* **License:** Proprietary / Commercial (Binary Distribution)
-* **Usage:** Free for non-commercial integration testing. Commercial deployment requires an active SLA.
-* **Source Access:** Available only to audited Enterprise Partners under NDA.
-
-For licensing inquiries or enterprise support, contact: `licensing@sonolock.com` (replace with your actual contact).
-
----
-
-**End of Public Overview Document**
-
-> This document is fully safe for public release and does not disclose any internal implementation, memory layout, alignment, cryptographic parameters, or source code.
+Source Access: Available only to audited Enterprise Partners under NDA.
